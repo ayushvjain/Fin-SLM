@@ -49,7 +49,7 @@ def chunk_text_file(input_file='financial_corpus_without_chunking.txt',
 
 def train_sentencepiece_model(input_file='financial_corpus_with_chunking.txt', 
                                model_prefix='financial_tokenizer', 
-                               vocab_size=8000, 
+                               vocab_size=78, 
                                model_type='unigram'):
     """
     Train a SentencePiece tokenizer model.
@@ -131,22 +131,34 @@ def tokenize_text(model_path, input_file='financial_corpus_with_chunking.txt', o
     
     # Tokenize and write output
     with open(output_file, 'w', encoding='utf-8') as outfile:
-        chunks = text.split('--- Chunk')
+        # Split the text by some known separator (e.g., blank lines or chunk markers)
+        chunks = text.split('\n\n')  # Assuming chunks are separated by double newlines
         
-        for i, chunk in enumerate(chunks[1:], 1):
-            # Extract chunk header and text
-            lines = chunk.split('\n')
-            chunk_header = lines[0]
-            chunk_text = '\n'.join(lines[1:]).strip()
-            
+        # Debug: Check if chunks are being split correctly
+        print(f"Total number of chunks: {len(chunks)}")
+        
+        for i, chunk in enumerate(chunks):
+            # Skip empty chunks
+            if not chunk.strip():  # If chunk is empty or contains only spaces
+                print(f"Skipping empty chunk {i + 1}")
+                continue
+
             # Tokenize the chunk
-            tokens = sp.encode(chunk_text, out_type=str)
+            tokens = sp.encode(chunk, out_type=str)
             
-            # Write tokenized chunk
-            outfile.write(f"--- Chunk {i} {chunk_header}\n")
-            outfile.write(' '.join(tokens) + '\n\n')
+            if tokens:  # If tokens are generated
+                print(f"Tokenized chunk {i + 1} into {len(tokens)} tokens.")
+                #outfile.write(f"--- Chunk {i + 1}\n")
+                outfile.write(' '.join(tokens) + '\n\n')
+            else:
+                print(f"Chunk {i + 1} resulted in empty tokenization. Skipping...")
+        
     
     print(f"Tokenization complete. Output written to {output_file}")
+    # Test tokenization with the SentencePiece model
+    sample_text = "This is a test sentence to verify tokenization."
+    tokens = sp.encode(sample_text, out_type=str)
+    print(f"Tokens: {tokens}")
 
 def main():
     try:
@@ -162,7 +174,7 @@ def main():
         model_path = train_sentencepiece_model(
             input_file='financial_corpus_with_chunking.txt',
             model_prefix='financial_tokenizer',
-            vocab_size=8000,
+            vocab_size=78,
             model_type='unigram'
         )
         
