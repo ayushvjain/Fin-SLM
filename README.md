@@ -1,5 +1,5 @@
 ## Financial SLM - Steps to run
-**Steps**/
+**Steps**
 1. Clone the repository and go to the Demo branch using the following commands.
 - `git clone https://github.com/ayushvjain/Fin-SLM.git`
 - `git checkout Demo`
