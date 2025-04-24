@@ -1,3 +1,5 @@
+# Code to train the model by fine-tuning GPT2 Model
+# Import the required libraries. Before running please install the libraries.
 import os
 import time
 import torch
@@ -14,19 +16,19 @@ from transformers import (
 )
 from datasets import Dataset, load_from_disk, concatenate_datasets
 
-
+# This function is going to check GPU access and access the GPU if available, if not we will continue to use the CPU.
 def check_gpu():
     try:
         import torch_directml
         dml_device = torch_directml.device()
-        print("✅ Using DirectML device:", dml_device)
+        print("Using DirectML device:", dml_device)
         return "directml"
     except ImportError:
         if torch.cuda.is_available():
-            print(f"✅ CUDA GPU available: {torch.cuda.get_device_name(0)}")
+            print(f"CUDA GPU available: {torch.cuda.get_device_name(0)}")
             return "cuda"
         else:
-            print("⚠️ GPU not detected. Using CPU.")
+            print("GPU not detected. Using CPU.")
             return "cpu"
 
 class FinancialTextTrainer:
@@ -66,6 +68,7 @@ class FinancialTextTrainer:
         print(f"🔹 Device: {self.device}")
         print(f"🔹 Mixed Precision: {'Yes' if self.use_mixed_precision else 'No'}")
 
+    
     def load_and_preprocess_dataset(self):
         print("🔹 Loading text data from file...")
         try:
@@ -92,8 +95,7 @@ class FinancialTextTrainer:
         model_name = self.params.get("model_name", "gpt2")
         print(f"🔹 Loading pre-trained model and tokenizer: {model_name}")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-        # GPT-2 does not define a pad token by default. Set it to the EOS token.
+.
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
@@ -110,16 +112,13 @@ class FinancialTextTrainer:
         )
 
         if len(tokenized_dataset) < 2:
-            print("⚠️ Dataset too small for splitting. Using full dataset for both training and evaluation.")
+            print("Dataset too small for splitting. Using full dataset for both training and evaluation.")
             train_dataset = tokenized_dataset
             eval_dataset = tokenized_dataset
         else:
             split_dataset = tokenized_dataset.train_test_split(test_size=self.params.get("eval_split", 0.05))
             train_dataset = split_dataset["train"]
             eval_dataset = split_dataset["test"]
-
-        print(f"🔹 Train dataset size: {len(train_dataset)}")
-        print(f"🔹 Eval dataset size: {len(eval_dataset)}")
 
         # Use the data collator for language modeling (no masking for causal LM)
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
@@ -150,11 +149,11 @@ class FinancialTextTrainer:
             data_collator=data_collator,
         )
 
-        print("🚀 Starting fine-tuning...")
+        print("Starting fine-tuning")
         start_time = time.time()
         trainer.train()
         total_time = time.time() - start_time
-        print(f"✅ Fine-tuning complete in {total_time:.2f} seconds.")
+        print(f"Fine-tuning complete in {total_time:.2f} seconds.")
 
         # Evaluate the model on the evaluation dataset and compute perplexity
         eval_results = trainer.evaluate()
@@ -173,13 +172,13 @@ class FinancialTextTrainer:
         with open(os.path.join(model_save_path, "final_params.json"), "w") as f:
             json.dump(self.params, f, indent=4)
 
-        print(f"✅ Model and tokenizer saved at {model_save_path}")
+        print(f"Model and tokenizer saved at {model_save_path}")
         return model_save_path
 
     def run_pipeline(self):
         """Run the complete fine-tuning pipeline."""
         print(f"\n{'='*80}")
-        print(f"🚀 Starting run {self.run_id} with parameters:")
+        print(f"Starting run {self.run_id} with parameters:")
         for key, value in self.params.items():
             print(f"   {key}: {value}")
         print(f"{'='*80}\n")
@@ -187,8 +186,8 @@ class FinancialTextTrainer:
         try:
             model_save_path = self.train_gpt_model()
             print(f"\n{'='*80}")
-            print(f"✅ Run {self.run_id} completed successfully!")
-            print(f"   Model artifacts saved to: {model_save_path}")
+            print(f"Run {self.run_id} completed successfully!")
+            print(f"Model artifacts saved to: {model_save_path}")
             print(f"{'='*80}\n")
             return True
         except Exception as e:
@@ -205,6 +204,8 @@ def main():
     # Use DirectML on Intel Iris Xe GPU if available, otherwise fallback.
     gpu_backend = check_gpu()
     has_gpu = gpu_backend in ["directml", "cuda"]
+
+    # The list has a dictionary to run different sets of parameters to ensure the best set of parameters. The current set mentioned has the best perplexity score of ~24
     parameter_sets = [
         {
             "name": "financial_text_finetune_C",
@@ -250,7 +251,7 @@ def main():
     print("## SUMMARY OF ALL RUNS")
     print(f"{'#'*100}\n")
     for result in results:
-        status = "✅ SUCCESS" if result["success"] else "❌ FAILED"
+        status = "Success" if result["success"] else "Failed"
         gpu_info = "Used GPU" if result["used_gpu"] else "Used CPU"
         print(f"{status} - Run {result['run_id']}: {result['name']} ({gpu_info})")
         print(f"  Output directory: {result['output_dir']}\n")
